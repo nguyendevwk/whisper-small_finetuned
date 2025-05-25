@@ -103,7 +103,7 @@ def main():
         eval_dataset=infore1["validation"],
         data_collator=data_collator,
         compute_metrics=lambda pred: compute_metrics(pred, tokenizer),
-        tokenizer=processor.feature_extractor,
+        tokenizer=processor,
         callbacks=[EvaluationCallback(infore1["test"], processor, tokenizer, args.output_dir)],
     )
 
