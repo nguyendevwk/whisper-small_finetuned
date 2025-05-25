@@ -1,6 +1,8 @@
 import argparse
 import os
 import torch
+import random
+import numpy as np
 import logging
 from datasets import load_dataset, DatasetDict, Audio
 from transformers import (
@@ -8,13 +10,12 @@ from transformers import (
     WhisperTokenizer,
     WhisperProcessor,
     WhisperForConditionalGeneration,
-    Seq2SeqTrainingArguments,
     Seq2SeqTrainer
 )
 from src.data_preparation import prepare_dataset
-from    src.trainer_config import get_training_args, DataCollatorSpeechSeq2SeqWithPadding
-from    src.evaluation import compute_metrics, EvaluationCallback, evaluate_and_visualize
-from    src.utils import setup_logging
+from src.trainer_config import get_training_args, DataCollatorSpeechSeq2SeqWithPadding
+from src.evaluation import compute_metrics, SamplePredictionCallback
+from src.utils import setup_logging
 
 def parse_arguments():
     """Parse command-line arguments for fine-tuning."""
@@ -27,10 +28,10 @@ def parse_arguments():
                         help='Output directory for model checkpoints (default: ./whisper-small-vi)')
     parser.add_argument('--dataset_name', type=str, default="custom_dataset",
                         help='Pretty name for the dataset (default: custom_dataset)')
-    parser.add_argument('--selection_mode', type=str, choices=['epoch', 'step'], default='epoch',
-                        help='Select checkpoint by epoch or step (default: epoch)')
-    parser.add_argument('--checkpoint', type=int,
-                        help='Specific checkpoint to evaluate (epoch or step number)')
+    parser.add_argument('--num_sample_predictions', type=int, default=3,
+                        help='Number of sample predictions to show during evaluation (default: 3)')
+    parser.add_argument('--show_samples_every', type=int, default=100,
+                        help='Show sample predictions every N training steps (default: 100)')
     parser.add_argument('--model_name', type=str, default="openai/whisper-small",
                         help='Hugging Face pretrained model name (default: openai/whisper-small)')
     return parser.parse_args()
@@ -41,6 +42,10 @@ def main():
     setup_logging()
     logger = logging.getLogger(__name__)
 
+    # Log file structure for debugging
+    logger.info(f"Current working directory: {os.getcwd()}")
+    logger.info(f"Files in current directory: {os.listdir('.')}")
+
     # Parse arguments
     args = parse_arguments()
 
@@ -49,6 +54,11 @@ def main():
 
     # Log hardware info
     logger.info(f"GPU available: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'No GPU, using CPU'}")
+
+    # Set random seeds for reproducibility
+    random.seed(42)
+    torch.manual_seed(42)
+    np.random.seed(42)
 
     # Load and prepare dataset
     logger.info("Loading dataset...")
@@ -87,12 +97,21 @@ def main():
     model.generation_config.forced_decoder_ids = None
 
     # Setup training arguments
-    training_args = get_training_args(args.output_dir, args.selection_mode)
+    training_args = get_training_args(args.output_dir)
 
     # Initialize data collator
     data_collator = DataCollatorSpeechSeq2SeqWithPadding(
         processor=processor,
         decoder_start_token_id=model.config.decoder_start_token_id,
+    )
+
+    # Initialize sample prediction callback
+    sample_callback = SamplePredictionCallback(
+        eval_dataset=infore1["validation"],
+        processor=processor,
+        tokenizer=tokenizer,
+        num_samples=args.num_sample_predictions,
+        show_every_n_steps=args.show_samples_every
     )
 
     # Initialize trainer
@@ -103,26 +122,27 @@ def main():
         eval_dataset=infore1["validation"],
         data_collator=data_collator,
         compute_metrics=lambda pred: compute_metrics(pred, tokenizer),
-        tokenizer=processor,
-        callbacks=[EvaluationCallback(infore1["test"], processor, tokenizer, args.output_dir)],
+        processing_class=processor,  # Fix FutureWarning
+        callbacks=[sample_callback]
     )
 
     # Save processor
     processor.save_pretrained(args.output_dir)
 
-    # Train or evaluate specific checkpoint
-    if args.checkpoint is None:
-        logger.info("Starting training...")
-        trainer.train()
-        trainer.save_model(args.output_dir)
-        tokenizer.save_pretrained(args.output_dir)
-    else:
-        checkpoint_path = f"{args.output_dir}/checkpoint-{args.checkpoint}"
-        if args.selection_mode == 'epoch':
-            checkpoint_path = f"{args.output_dir}/checkpoint-epoch-{args.checkpoint}"
-        logger.info(f"Evaluating checkpoint: {checkpoint_path}")
-        from evaluation import evaluate_and_visualize
-        evaluate_and_visualize(trainer, infore1["test"], processor, tokenizer, checkpoint_path)
+    logger.info("Starting training...")
+    logger.info(f"Will show {args.num_sample_predictions} sample predictions:")
+    logger.info(f"  • Every {args.show_samples_every} training steps")
+    logger.info(f"  • After each evaluation")
+
+    # Train model
+    trainer.train()
+
+    # Save final model
+    trainer.save_model(args.output_dir)
+    tokenizer.save_pretrained(args.output_dir)
+
+    logger.info("Training completed!")
+    logger.info(f"Model saved to: {args.output_dir}")
 
 if __name__ == "__main__":
     main()
