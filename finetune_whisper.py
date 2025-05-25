@@ -12,12 +12,12 @@ from transformers import (
     Seq2SeqTrainer
 )
 from src.data_preparation import prepare_dataset
-from src.trainer_config import get_training_args, DataCollatorSpeechSeq2SeqWithPadding
-from src.evaluation import compute_metrics, EvaluationCallback
-from src.utils import setup_logging, validate_file
+from    src.trainer_config import get_training_args, DataCollatorSpeechSeq2SeqWithPadding
+from    src.evaluation import compute_metrics, EvaluationCallback
+from    src.utils import setup_logging
 
 def parse_arguments():
-    """Parse and validate command-line arguments for fine-tuning."""
+    """Parse command-line arguments for fine-tuning."""
     parser = argparse.ArgumentParser(description="Fine-tune Whisper model on custom audio dataset")
     parser.add_argument('--metadata_csv', type=str, required=True,
                         help='Path to metadata CSV file containing audio paths and transcriptions')
@@ -44,10 +44,6 @@ def main():
     # Parse arguments
     args = parse_arguments()
 
-    # Validate input files
-    validate_file(args.metadata_csv, "Metadata CSV")
-    validate_file(args.audio_dir, "Audio directory", is_dir=True)
-
     # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)
 
@@ -60,9 +56,7 @@ def main():
 
     def update_audio_path(example):
         """Update audio paths to absolute paths."""
-        audio_path = os.path.join(args.audio_dir, example['audio'])
-        validate_file(audio_path, f"Audio file {audio_path}")
-        example['audio'] = audio_path
+        example['audio'] = os.path.join(args.audio_dir, example['audio'])
         return example
 
     dataset = dataset.map(update_audio_path, desc="Updating audio paths")
