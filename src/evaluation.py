@@ -1,7 +1,14 @@
 import evaluate
 import torch
 import logging
-from transformers import Seq2SeqTrainer, WhisperProcessor, WhisperTokenizer
+from transformers import (
+    WhisperFeatureExtractor,
+    WhisperTokenizer,
+    WhisperProcessor,
+    WhisperForConditionalGeneration,
+    Seq2SeqTrainingArguments,
+    Seq2SeqTrainer
+)
 from datasets import Dataset
 import os
 

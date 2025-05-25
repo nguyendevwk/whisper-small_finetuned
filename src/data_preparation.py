@@ -2,6 +2,7 @@ from datasets import DatasetDict
 from transformers import WhisperFeatureExtractor, WhisperTokenizer
 import logging
 import torch
+import os
 
 def prepare_dataset(dataset: DatasetDict, feature_extractor: WhisperFeatureExtractor,
                   tokenizer: WhisperTokenizer) -> DatasetDict:
