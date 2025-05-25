@@ -9,6 +9,8 @@ from transformers import (
     Seq2SeqTrainingArguments,
     Seq2SeqTrainer
 )
+from transformers import TrainerCallback, TrainingArguments, TrainerState, TrainerControl
+
 from datasets import Dataset
 import os
 
@@ -22,9 +24,7 @@ def compute_metrics(pred, tokenizer):
     label_str = tokenizer.batch_decode(label_ids, skip_special_tokens=True)
     wer = 100 * metric.compute(predictions=pred_str, references=label_str)
     return {"wer": wer}
-
-class EvaluationCallback:
-    """Callback for evaluating and visualizing test set predictions."""
+class EvaluationCallback(TrainerCallback):
     def __init__(self, test_dataset: Dataset, processor: WhisperProcessor,
                  tokenizer: WhisperTokenizer, output_dir: str):
         self.test_dataset = test_dataset
@@ -33,18 +33,19 @@ class EvaluationCallback:
         self.output_dir = output_dir
         self.logger = logging.getLogger(__name__)
 
-    def on_evaluate(self, args, state, control, **kwargs):
-        """Evaluate and visualize predictions after each epoch/step."""
+    def on_init_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
+        return control  # Trả về control dù không làm gì cũng là bắt buộc
+
+    def on_evaluate(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         checkpoint_dir = f"{self.output_dir}/checkpoint-{state.global_step}"
-        if args.eval_strategy == "epoch":
-            checkpoint_dir = f"{self.output_dir}/checkpoint-epoch-{state.epoch}"
+        if args.evaluation_strategy == "epoch":
+            checkpoint_dir = f"{self.output_dir}/checkpoint-epoch-{int(state.epoch)}"
 
         self.logger.info(f"Evaluating checkpoint at {checkpoint_dir}")
         trainer = kwargs['trainer']
-        with torch.no_grad():  # Save memory during evaluation
+        with torch.no_grad():
             predictions = trainer.predict(self.test_dataset)
 
-        # Log sample predictions (first 5 samples)
         pred_ids = predictions.predictions[:5]
         label_ids = predictions.label_ids[:5]
         pred_str = self.tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
@@ -59,6 +60,7 @@ class EvaluationCallback:
 
         wer = compute_metrics(predictions, self.tokenizer)
         self.logger.info(f"WER for checkpoint {checkpoint_dir}: {wer['wer']:.2f}%")
+        return control
 
 def evaluate_and_visualize(trainer: Seq2SeqTrainer, test_dataset: Dataset,
                          processor: WhisperProcessor, tokenizer: WhisperTokenizer,
