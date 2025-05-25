@@ -57,15 +57,15 @@ def prepare_dataset(dataset: DatasetDict, feature_extractor: WhisperFeatureExtra
     processed_dataset = dataset.map(
         process_batch,
         remove_columns=dataset.column_names["train"],
-        num_proc=1,  # Single-threaded for Kaggle
+        num_proc=2,  # Single-threaded for Kaggle
         desc="Preparing dataset",
-        batch_size=100,  # Small batch size for memory efficiency
+        batch_size=256,  # Small batch size for memory efficiency
         batched=True
     )
 
-    def is_valid_example(example):
-        return len(example["input_features"]) > 0 and len(example["labels"]) > 0
+    # def is_valid_example(example):
+    #     return len(example["input_features"]) > 0 and len(example["labels"]) > 0
 
-    processed_dataset = processed_dataset.filter(is_valid_example, num_proc=1, desc="Filtering invalid examples")
+    # processed_dataset = processed_dataset.filter(is_valid_example, num_proc=1, desc="Filtering invalid examples")
 
     return processed_dataset
