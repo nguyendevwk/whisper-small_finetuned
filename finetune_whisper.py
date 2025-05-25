@@ -11,10 +11,10 @@ from transformers import (
     Seq2SeqTrainingArguments,
     Seq2SeqTrainer
 )
-from data_preparation import prepare_dataset
-from trainer_config import get_training_args, DataCollatorSpeechSeq2SeqWithPadding
-from evaluation import compute_metrics, EvaluationCallback
-from utils import setup_logging, validate_file
+from src.data_preparation import prepare_dataset
+from src.trainer_config import get_training_args, DataCollatorSpeechSeq2SeqWithPadding
+from src.evaluation import compute_metrics, EvaluationCallback
+from src.utils import setup_logging, validate_file
 
 def parse_arguments():
     """Parse and validate command-line arguments for fine-tuning."""
