@@ -13,7 +13,7 @@ from transformers import (
 )
 from src.data_preparation import prepare_dataset
 from    src.trainer_config import get_training_args, DataCollatorSpeechSeq2SeqWithPadding
-from    src.evaluation import compute_metrics, EvaluationCallback
+from    src.evaluation import compute_metrics, EvaluationCallback, evaluate_and_visualize
 from    src.utils import setup_logging
 
 def parse_arguments():
