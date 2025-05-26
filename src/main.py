@@ -49,12 +49,12 @@ def parse_args():
                         help='Frequency of saving checkpoints (default: 500)')
     parser.add_argument('--eval_steps', type=int, default=None,
                         help='Frequency of evaluation steps (default: None, use eval_strategy)')
-    parser.add_argument('--eval_strategy', type=str, default="epoch",
+    parser.add_argument('--eval_strategy', type=str, default="steps",
                         choices=["no", "steps", "epoch"],
-                        help='Evaluation strategy (default: epoch)')
-    parser.add_argument('--save_strategy', type=str, default="epoch",
+                        help='Evaluation strategy (default: steps)')
+    parser.add_argument('--save_strategy', type=str, default="steps",
                         choices=["no", "steps", "epoch"],
-                        help='Save strategy (default: epoch)')
+                        help='Save strategy (default: steps)')
     parser.add_argument('--logging_strategy', type=str, default="steps",
                         choices=["no", "steps", "epoch"],
                         help='Logging strategy (default: steps)')

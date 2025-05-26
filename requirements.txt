@@ -1,0 +1,6 @@
+jiwer==3.1.0
+transformers==4.51.3
+datasets==3.6.0
+evaluate==0.4.3
+torch==2.6.0+cu124
+huggingface_hub==0.31.1
